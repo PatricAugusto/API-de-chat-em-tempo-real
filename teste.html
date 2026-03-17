@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<body>
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+  const socket = io('http://localhost:3000')
+
+  socket.on('connect', () => {
+    console.log('Conectado! ID:', socket.id)
+    socket.emit('message', { text: 'Olá servidor!' })
+  })
+
+  socket.on('message', (data) => {
+    console.log('Mensagem recebida:', data)
+  })
+</script>
+</body>
+</html>
