@@ -18,5 +18,13 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PatricAugusto/API-de-chat-em-tempo-real.git"
+  },
+  "bugs": {
+    "url": "https://github.com/PatricAugusto/API-de-chat-em-tempo-real/issues"
+  },
+  "homepage": "https://github.com/PatricAugusto/API-de-chat-em-tempo-real#readme"
 }

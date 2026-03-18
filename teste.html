@@ -1,18 +1,35 @@
 <!DOCTYPE html>
 <html>
 <body>
-<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-<script>
-  const socket = io('http://localhost:3000')
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script>
+    const socket = io('http://localhost:3000')
 
-  socket.on('connect', () => {
-    console.log('Conectado! ID:', socket.id)
-    socket.emit('message', { text: 'Olá servidor!' })
-  })
+    socket.on('connect', () => {
+      console.log('Conectado:', socket.id)
 
-  socket.on('message', (data) => {
-    console.log('Mensagem recebida:', data)
-  })
-</script>
+      // 1. Registra o usuário
+      socket.emit('user:join', { username: 'Ana' })
+    })
+
+    socket.on('user:joined', (data) => {
+      console.log('Registrado:', data)
+
+      // 2. Entra em uma sala
+      socket.emit('room:join', { room: 'geral' })
+    })
+
+    socket.on('room:joined', (data) => {
+      console.log('Entrou na sala:', data)
+
+      // 3. Envia mensagem na sala
+      socket.emit('room:message', { room: 'geral', text: 'Olá pessoal!' })
+    })
+
+    socket.on('room:message',     (data) => console.log('Mensagem:', data))
+    socket.on('room:user_joined', (data) => console.log('Entrou:', data))
+    socket.on('room:user_left',   (data) => console.log('Saiu:', data))
+    socket.on('error',            (data) => console.error('Erro:', data))
+  </script>
 </body>
 </html>
