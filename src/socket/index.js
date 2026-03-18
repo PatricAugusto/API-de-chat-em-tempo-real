@@ -1,4 +1,12 @@
+// src/socket/index.js
+
 const { saveMessage, getHistory } = require('./dmHistory')
+const {
+  broadcastPresence,
+  startTyping,
+  stopTyping,
+  clearTypingTimer
+} = require('./presence')
 
 module.exports = function initSocket(io) {
 
@@ -12,9 +20,15 @@ module.exports = function initSocket(io) {
     // ── Registro do usuário ──────────────────────────────
     socket.on('user:join', ({ username }) => {
       users.set(socket.id, { username, rooms: [] })
-      console.log(`${username} entrou no servidor`)
 
+      // Armazena também no socket.data para buscas internas
+      socket.data.username = username
+
+      console.log(`${username} entrou no servidor`)
       socket.emit('user:joined', { socketId: socket.id, username })
+
+      // Avisa todos que a lista de presença mudou
+      broadcastPresence(io, users)
     })
 
     // ── Entrar em uma sala ───────────────────────────────
@@ -98,10 +112,27 @@ module.exports = function initSocket(io) {
       socket.emit('dm:history', { withUsername, messages: msgs })
     })
 
+    // ── Lista de usuários online ─────────────────────────
+    socket.on('presence:get', () => {
+      broadcastPresence(io, users)
+    })
+
+    // ── Typing indicator ─────────────────────────────────
+    socket.on('typing:start', ({ room, toUsername }) => {
+      startTyping(io, socket, users, { room, toUsername })
+    })
+
+    socket.on('typing:stop', ({ room, toUsername }) => {
+      stopTyping(io, socket, users, { room, toUsername })
+    })
+
     // ── Desconexão ───────────────────────────────────────
     socket.on('disconnect', () => {
       const user = users.get(socket.id)
       if (!user) return
+
+      // Limpa timer de typing se existir
+      clearTypingTimer(socket.id)
 
       user.rooms.forEach(room => {
         socket.to(room).emit('room:user_left', {
@@ -113,6 +144,9 @@ module.exports = function initSocket(io) {
 
       users.delete(socket.id)
       console.log(`Desconectou: ${user.username}`)
+
+      // Atualiza lista de presença para todos
+      broadcastPresence(io, users)
     })
   })
 }

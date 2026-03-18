@@ -3,8 +3,8 @@
 <body>
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script>
-    const ME = 'Ana'       // troque para 'Bruno' na segunda aba
-    const TARGET = 'Bruno' // troque para 'Ana' na segunda aba
+    const ME = 'Ana'        // troque para 'Bruno' na segunda aba
+    const ROOM = 'geral'
 
     const socket = io('http://localhost:3000')
 
@@ -14,32 +14,27 @@
 
     socket.on('user:joined', () => {
       console.log(`Logado como ${ME}`)
+      socket.emit('room:join', { room: ROOM })
+    })
 
-      // Envia uma DM após 1s (garante que o TARGET já conectou)
+    socket.on('room:joined', () => {
+      // Simula digitação após entrar na sala
       setTimeout(() => {
-        socket.emit('dm:send', { toUsername: TARGET, text: `Oi ${TARGET}, sou o ${ME}!` })
-      }, 1000)
+        console.log('Começando a digitar...')
+        socket.emit('typing:start', { room: ROOM })
+      }, 1500)
+
+      setTimeout(() => {
+        console.log('Parou de digitar, enviando mensagem...')
+        socket.emit('typing:stop', { room: ROOM })
+        socket.emit('room:message', { room: ROOM, text: `Olá de ${ME}!` })
+      }, 3500)
     })
 
-    // Mensagem entregue com sucesso (eco para quem enviou)
-    socket.on('dm:sent', (msg) => {
-      console.log('✓ Enviado:', msg)
-    })
-
-    // Mensagem recebida de outro usuário
-    socket.on('dm:received', (msg) => {
-      console.log('📩 Recebido:', msg)
-
-      // Busca o histórico logo após receber a primeira mensagem
-      socket.emit('dm:history', { withUsername: msg.from })
-    })
-
-    // Histórico retornado
-    socket.on('dm:history', (data) => {
-      console.log('📜 Histórico com', data.withUsername, data.messages)
-    })
-
-    socket.on('error', (err) => console.error('Erro:', err))
+    socket.on('presence:list',  (data) => console.log('👥 Online:', data.users.map(u => u.username)))
+    socket.on('typing:update',  (data) => console.log('✏️  Typing:', data))
+    socket.on('room:message',   (data) => console.log('💬 Msg:', data))
+    socket.on('error',          (err)  => console.error('Erro:', err))
   </script>
 </body>
 </html>
