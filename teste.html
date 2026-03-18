@@ -3,33 +3,43 @@
 <body>
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script>
+    const ME = 'Ana'       // troque para 'Bruno' na segunda aba
+    const TARGET = 'Bruno' // troque para 'Ana' na segunda aba
+
     const socket = io('http://localhost:3000')
 
     socket.on('connect', () => {
-      console.log('Conectado:', socket.id)
-
-      // 1. Registra o usuário
-      socket.emit('user:join', { username: 'Ana' })
+      socket.emit('user:join', { username: ME })
     })
 
-    socket.on('user:joined', (data) => {
-      console.log('Registrado:', data)
+    socket.on('user:joined', () => {
+      console.log(`Logado como ${ME}`)
 
-      // 2. Entra em uma sala
-      socket.emit('room:join', { room: 'geral' })
+      // Envia uma DM após 1s (garante que o TARGET já conectou)
+      setTimeout(() => {
+        socket.emit('dm:send', { toUsername: TARGET, text: `Oi ${TARGET}, sou o ${ME}!` })
+      }, 1000)
     })
 
-    socket.on('room:joined', (data) => {
-      console.log('Entrou na sala:', data)
-
-      // 3. Envia mensagem na sala
-      socket.emit('room:message', { room: 'geral', text: 'Olá pessoal!' })
+    // Mensagem entregue com sucesso (eco para quem enviou)
+    socket.on('dm:sent', (msg) => {
+      console.log('✓ Enviado:', msg)
     })
 
-    socket.on('room:message',     (data) => console.log('Mensagem:', data))
-    socket.on('room:user_joined', (data) => console.log('Entrou:', data))
-    socket.on('room:user_left',   (data) => console.log('Saiu:', data))
-    socket.on('error',            (data) => console.error('Erro:', data))
+    // Mensagem recebida de outro usuário
+    socket.on('dm:received', (msg) => {
+      console.log('📩 Recebido:', msg)
+
+      // Busca o histórico logo após receber a primeira mensagem
+      socket.emit('dm:history', { withUsername: msg.from })
+    })
+
+    // Histórico retornado
+    socket.on('dm:history', (data) => {
+      console.log('📜 Histórico com', data.withUsername, data.messages)
+    })
+
+    socket.on('error', (err) => console.error('Erro:', err))
   </script>
 </body>
 </html>

@@ -1,3 +1,5 @@
+const { saveMessage, getHistory } = require('./dmHistory')
+
 module.exports = function initSocket(io) {
 
   // Guarda metadados dos usuários em memória
@@ -12,7 +14,6 @@ module.exports = function initSocket(io) {
       users.set(socket.id, { username, rooms: [] })
       console.log(`${username} entrou no servidor`)
 
-      // Confirma o registro para quem enviou
       socket.emit('user:joined', { socketId: socket.id, username })
     })
 
@@ -24,14 +25,12 @@ module.exports = function initSocket(io) {
       socket.join(room)
       user.rooms.push(room)
 
-      // Avisa todos na sala (exceto quem entrou)
       socket.to(room).emit('room:user_joined', {
         username: user.username,
         room,
         at: new Date().toISOString()
       })
 
-      // Envia para quem entrou a lista de membros atuais
       const members = getRoomMembers(io, users, room)
       socket.emit('room:joined', { room, members })
 
@@ -50,7 +49,6 @@ module.exports = function initSocket(io) {
         at: new Date().toISOString()
       }
 
-      // Envia para TODOS na sala (incluindo quem enviou)
       io.to(room).emit('room:message', message)
     })
 
@@ -71,12 +69,40 @@ module.exports = function initSocket(io) {
       console.log(`${user.username} saiu da sala: ${room}`)
     })
 
+    // ── Mensagem privada ─────────────────────────────────
+    socket.on('dm:send', ({ toUsername, text }) => {
+      const sender = users.get(socket.id)
+      if (!sender) return socket.emit('error', { msg: 'Faça login primeiro' })
+
+      const recipientEntry = [...users.entries()]
+        .find(([, u]) => u.username === toUsername)
+
+      if (!recipientEntry) {
+        return socket.emit('error', { msg: `Usuário "${toUsername}" não encontrado` })
+      }
+
+      const [recipientSocketId] = recipientEntry
+
+      const message = saveMessage(sender.username, toUsername, text)
+
+      io.to(recipientSocketId).emit('dm:received', message)
+      socket.emit('dm:sent', message)
+    })
+
+    // ── Buscar histórico de DM ───────────────────────────
+    socket.on('dm:history', ({ withUsername }) => {
+      const requester = users.get(socket.id)
+      if (!requester) return socket.emit('error', { msg: 'Faça login primeiro' })
+
+      const msgs = getHistory(requester.username, withUsername)
+      socket.emit('dm:history', { withUsername, messages: msgs })
+    })
+
     // ── Desconexão ───────────────────────────────────────
     socket.on('disconnect', () => {
       const user = users.get(socket.id)
       if (!user) return
 
-      // Avisa todas as salas que o usuário estava
       user.rooms.forEach(room => {
         socket.to(room).emit('room:user_left', {
           username: user.username,
