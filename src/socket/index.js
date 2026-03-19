@@ -15,20 +15,13 @@ module.exports = function initSocket(io) {
   const users = new Map()
 
   io.on('connection', (socket) => {
-    console.log(`Conectou: ${socket.id}`)
+    const username = socket.data.user.username
+  users.set(socket.id, { username, rooms: [] })
 
-    // ── Registro do usuário ──────────────────────────────
-    socket.on('user:join', ({ username }) => {
-      users.set(socket.id, { username, rooms: [] })
+  console.log(`Conectou: ${username} (${socket.id})`)
 
-      // Armazena também no socket.data para buscas internas
-      socket.data.username = username
-
-      console.log(`${username} entrou no servidor`)
-      socket.emit('user:joined', { socketId: socket.id, username })
-
-      // Avisa todos que a lista de presença mudou
-      broadcastPresence(io, users)
+  // Avisa todos da nova presença
+  broadcastPresence(io, users)
     })
 
     // ── Entrar em uma sala ───────────────────────────────
@@ -148,8 +141,7 @@ module.exports = function initSocket(io) {
       // Atualiza lista de presença para todos
       broadcastPresence(io, users)
     })
-  })
-}
+  }
 
 // ── Helper: lista membros de uma sala ─────────────────────
 function getRoomMembers(io, users, room) {

@@ -3,38 +3,40 @@
 <body>
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script>
-    const ME = 'Ana'        // troque para 'Bruno' na segunda aba
-    const ROOM = 'geral'
+    const USERNAME = 'Ana' // troque na segunda aba
 
-    const socket = io('http://localhost:3000')
+    async function start() {
+      // 1. Faz login e obtém token
+      const res = await fetch('http://localhost:3000/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: USERNAME })
+      })
+      const { token } = await res.json()
+      console.log('Token obtido:', token)
 
-    socket.on('connect', () => {
-      socket.emit('user:join', { username: ME })
-    })
+      // 2. Conecta ao WebSocket com o token no handshake
+      const socket = io('http://localhost:3000', {
+        auth: { token }
+      })
 
-    socket.on('user:joined', () => {
-      console.log(`Logado como ${ME}`)
-      socket.emit('room:join', { room: ROOM })
-    })
+      socket.on('connect', () => {
+        console.log('Conectado como', USERNAME)
+        socket.emit('room:join', { room: 'geral' })
+      })
 
-    socket.on('room:joined', () => {
-      // Simula digitação após entrar na sala
-      setTimeout(() => {
-        console.log('Começando a digitar...')
-        socket.emit('typing:start', { room: ROOM })
-      }, 1500)
+      socket.on('connect_error', (err) => {
+        console.error('Erro de conexão:', err.message)
+      })
 
-      setTimeout(() => {
-        console.log('Parou de digitar, enviando mensagem...')
-        socket.emit('typing:stop', { room: ROOM })
-        socket.emit('room:message', { room: ROOM, text: `Olá de ${ME}!` })
-      }, 3500)
-    })
+      socket.on('room:joined',   (data) => console.log('Entrou:', data))
+      socket.on('presence:list', (data) => console.log('Online:', data.users.map(u => u.username)))
+      socket.on('room:message',  (data) => console.log('Msg:', data))
+      socket.on('typing:update', (data) => console.log('Typing:', data))
+      socket.on('error',         (err)  => console.error('Erro:', err))
+    }
 
-    socket.on('presence:list',  (data) => console.log('👥 Online:', data.users.map(u => u.username)))
-    socket.on('typing:update',  (data) => console.log('✏️  Typing:', data))
-    socket.on('room:message',   (data) => console.log('💬 Msg:', data))
-    socket.on('error',          (err)  => console.error('Erro:', err))
+    start()
   </script>
 </body>
 </html>
